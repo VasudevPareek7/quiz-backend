@@ -1,0 +1,14 @@
+FROM eclipse-temurin:17-jdk
+
+# Install required dependencies
+RUN apt-get update && \
+    apt-get install -y libc6 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY target/*.jar app.jar
+COPY src/main/resources/admin.json /app/admin.json
+ENV FIREBASE_CONFIG=/app/admin.json
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

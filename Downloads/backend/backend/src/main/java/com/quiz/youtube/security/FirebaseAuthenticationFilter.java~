@@ -1,0 +1,49 @@
+package com.quiz.youtube.security;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseToken;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Collections;
+
+@Slf4j
+public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+
+        try {
+            String authHeader = request.getHeader("Authorization");
+            log.debug("Auth header: {}", authHeader);  // Debug log
+
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String idToken = authHeader.substring(7);
+                log.debug("Attempting to verify token");  // Debug log
+
+                FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
+                log.debug("Token verified successfully for user: {}", decodedToken.getUid());  // Debug log
+
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(decodedToken.getUid(), null,
+                                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));  // Added role
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.debug("Authentication set in SecurityContext");  // Debug log
+            }
+        } catch (Exception e) {
+            log.error("Failed to verify Firebase token", e);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}
